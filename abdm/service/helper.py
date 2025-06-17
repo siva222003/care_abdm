@@ -5,6 +5,7 @@ from uuid import uuid4
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA1
 from Crypto.PublicKey import RSA
+from django.core.cache import cache
 from django.db.models import Q
 from django.db.models.functions import TruncDate
 from rest_framework.exceptions import APIException
@@ -40,11 +41,14 @@ def uuid():
 def encrypt_message(message: str):
     rsa_public_key = RSA.importKey(
         b64decode(
-            Request(settings.ABDM_ABHA_URL).get(
+            Request(settings.ABDM_ABHA_URL)
+            .get(
                 "/v3/profile/public/certificate",
                 None,
-                { "TIMESTAMP": timestamp(), "REQUEST-ID": uuid() }
-            ).json().get("publicKey", "")
+                {"TIMESTAMP": timestamp(), "REQUEST-ID": uuid()},
+            )
+            .json()
+            .get("publicKey", "")
         )
     )
 
@@ -79,6 +83,7 @@ def hf_id_from_abha_id(health_id: str):
 def cm_id():
     return settings.ABDM_CM_ID
 
+
 def benefit_name():
     return settings.ABDM_BENEFIT_NAME
 
@@ -102,3 +107,28 @@ def generate_care_contexts_for_existing_data(patient: Patient):
         )
 
     return care_contexts
+
+
+PHR_ACCESS_TOKEN_PREFIX = "phr_access_token:"
+PHR_REFRESH_TOKEN_PREFIX = "phr_refresh_token:"
+PHR_ACCESS_TOKEN_CACHE_TIMEOUT = 1800
+PHR_REFRESH_TOKEN_CACHE_TIMEOUT = 129600
+
+
+def cache_phr_tokens(self, abha_health_id, access_token, refresh_token):
+    cache.set(
+        f"{PHR_ACCESS_TOKEN_PREFIX}{abha_health_id}",
+        access_token,
+        timeout=PHR_ACCESS_TOKEN_CACHE_TIMEOUT,
+    )
+
+    cache.set(
+        f"{PHR_REFRESH_TOKEN_PREFIX}{abha_health_id}",
+        refresh_token,
+        timeout=PHR_REFRESH_TOKEN_CACHE_TIMEOUT,
+    )
+
+
+def remove_cached_phr_tokens(self, abha_health_id):
+    cache.delete(f"{PHR_ACCESS_TOKEN_PREFIX}{abha_health_id}")
+    cache.delete(f"{PHR_REFRESH_TOKEN_PREFIX}{abha_health_id}")
