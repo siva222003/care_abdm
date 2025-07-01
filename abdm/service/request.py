@@ -80,6 +80,8 @@ class Request:
         url = self.url + path
         headers = self.headers(headers, auth)
 
+        logger.info(f"headers-get1: {headers}")
+
         response = requests.get(
             url, headers=headers, params=params, timeout=settings.ABDM_REQUEST_TIMEOUT
         )
@@ -96,6 +98,8 @@ class Request:
         url = self.url + path
         payload = json.dumps(data)
         headers = self.headers(headers, auth)
+
+        logger.info(f"headers-post: {headers}")
 
         response = requests.post(
             url, data=payload, headers=headers, timeout=settings.ABDM_REQUEST_TIMEOUT

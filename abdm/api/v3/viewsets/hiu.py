@@ -213,6 +213,7 @@ class HIUCallbackViewSet(GenericViewSet):
     def hiu__consent__request__on_init(self, request):
         validated_data = self.validate_request(request)
         request_id = validated_data.get("response").get("requestId")
+        logger.info(f"Consent Request On Init: {request_id}")
 
         consent = ConsentRequest.objects.filter(external_id=request_id).first()
 
@@ -232,6 +233,7 @@ class HIUCallbackViewSet(GenericViewSet):
                 f"Consent Request: {request_id}, Error in Consent Request while On Init: {validated_data.get('error').get('message')}"
             )
 
+        logger.info("Consent Request On Init Success")
         return Response(
             status=status.HTTP_202_ACCEPTED,
         )
@@ -334,6 +336,8 @@ class HIUCallbackViewSet(GenericViewSet):
     @action(detail=False, methods=["POST"], url_path="hiu/consent/on-fetch")
     def hiu__consent__on_fetch(self, request):
         validated_data = self.validate_request(request)
+
+        logger.info(f"Consent On Fetch: {validated_data}")
 
         consent = validated_data.get("consent")
         consent_detail = consent.get("consentDetail")

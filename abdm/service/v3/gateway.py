@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -58,12 +59,15 @@ from care.emr.models.file_upload import FileUpload
 from care.emr.models.medication_request import MedicationRequest
 from care.emr.models.questionnaire import QuestionnaireResponse
 
+logger = logging.getLogger(__name__)
+
 
 class GatewayService:
     request = Request(settings.ABDM_GATEWAY_URL)
 
     @staticmethod
     def handle_error(error: dict[str, Any] | str) -> str:
+        logger.info(f"GatewayService.handle_error: {error}")
         if isinstance(error, list):
             return GatewayService.handle_error(error[0])
 
