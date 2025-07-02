@@ -9,10 +9,16 @@ from abdm.service.helper import (
 )
 from abdm.service.request import Request
 from abdm.service.v3.types.phr.phr_consent import (
+    PhrConsentArtefactBody,
+    PhrConsentArtefactResponse,
     PhrConsentArtefactsBody,
     PhrConsentArtefactsResponse,
+    PhrConsentAutoApproveBody,
+    PhrConsentAutoApproveResponse,
     PhrConsentRequestApproveBody,
     PhrConsentRequestApproveResponse,
+    PhrConsentRequestArtefactsBody,
+    PhrConsentRequestArtefactsResponse,
     PhrConsentRequestBody,
     PhrConsentRequestDenyBody,
     PhrConsentRequestDenyResponse,
@@ -61,7 +67,7 @@ class PhrConsentService:
         payload: dict | None = None,
         params: dict | None = None,
         headers: dict | None = None,
-        expected_status: int = 200,
+        expected_status: int = 202,
     ):
         default_headers = {
             "REQUEST-ID": uuid(),
@@ -106,7 +112,6 @@ class PhrConsentService:
                 "status": data.get("status"),
             },
             headers=headers,
-            expected_status=202,
         )
 
         return response.json()
@@ -120,10 +125,7 @@ class PhrConsentService:
         }
 
         response = PhrConsentService._make_request(
-            "GET",
-            f"/consent/v3/request/{data.get('request_id')}",
-            headers=headers,
-            expected_status=202,
+            "GET", f"/consent/v3/request/{data.get('request_id')}", headers=headers
         )
 
         return response.json()
@@ -145,7 +147,36 @@ class PhrConsentService:
                 "status": data.get("status"),
             },
             headers=headers,
-            expected_status=202,
+        )
+
+        return response.json()
+
+    @staticmethod
+    def phr__consent__request__artefacts(
+        data: PhrConsentRequestArtefactsBody,
+    ) -> PhrConsentRequestArtefactsResponse:
+        headers = {
+            "X-AUTH-TOKEN": f"{data.get('x_token', '')}",
+        }
+
+        response = PhrConsentService._make_request(
+            "GET",
+            f"/consent/v3/artefact/request/{data.get('request_id')}",
+            headers=headers,
+        )
+
+        return response.json()
+
+    @staticmethod
+    def phr__consent__artefact(
+        data: PhrConsentArtefactBody,
+    ) -> PhrConsentArtefactResponse:
+        headers = {
+            "X-AUTH-TOKEN": f"{data.get('x_token', '')}",
+        }
+
+        response = PhrConsentService._make_request(
+            "GET", f"/consent/v3/artefact/{data.get('artefact_id')}", headers=headers
         )
 
         return response.json()
@@ -167,7 +198,6 @@ class PhrConsentService:
             f"/consent/v3/request/{data.get('request_id')}/approve",
             payload,
             headers=headers,
-            expected_status=202,
         )
 
         return response.json()
@@ -189,7 +219,6 @@ class PhrConsentService:
             f"/consent/v3/request/{data.get('request_id')}/deny",
             payload,
             headers=headers,
-            expected_status=202,
         )
 
         return response.json()
@@ -211,7 +240,23 @@ class PhrConsentService:
             "/consent/v3/request/revoke",
             payload,
             headers=headers,
-            expected_status=202,
+        )
+
+        return response.json()
+
+    @staticmethod
+    def phr__consent__auto__approve(
+        data: PhrConsentAutoApproveBody,
+    ) -> PhrConsentAutoApproveResponse:
+        headers = {
+            "X-AUTH-TOKEN": f"{data.get('x_token', '')}",
+        }
+
+        response = PhrConsentService._make_request(
+            "POST",
+            "/consent/v3/request/auto/approve",
+            payload=data.get("auto_approve_request"),
+            headers=headers,
         )
 
         return response.json()

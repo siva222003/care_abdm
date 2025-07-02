@@ -94,6 +94,7 @@ class GatewayService:
     def token__generate_token(
         data: TokenGenerateTokenBody,
     ) -> TokenGenerateTokenResponse:
+        logger.info("token__generate_token")
         abha_number = data.get("abha_number")
         hf_id = data.get("hf_id", None)
 
@@ -135,6 +136,7 @@ class GatewayService:
         )
 
         if last_generate_token_request:
+            logger.info("Token already generated")
             return {}
 
         cache.set(
@@ -158,10 +160,14 @@ class GatewayService:
         if response.status_code != 202:
             raise ABDMAPIException(detail=GatewayService.handle_error(response.json()))
 
+        logger.info("token__generate_token completed")
+
         return {}
 
     @staticmethod
     def link__carecontext(data: LinkCarecontextBody) -> LinkCarecontextResponse:
+        logger.info("link__carecontext")
+
         patient = data.get("patient")
         if not patient:
             raise ABDMAPIException(detail="Provide a patient to link care context")
@@ -199,8 +205,9 @@ class GatewayService:
         )
 
         link_token = cache.get(f"abdm_link_token__{hf_id}__{abha_number.health_id}")
-
+        logger.info(f"link_token: {link_token}")
         if not link_token:
+            logger.info("Generating link token")
             GatewayService.token__generate_token(
                 {
                     "abha_number": abha_number,
@@ -260,6 +267,8 @@ class GatewayService:
         Transaction.objects.filter(reference_id=reference_id).update(
             status=TransactionStatus.COMPLETED
         )
+
+        logger.info("Link care context completed")
 
         return {}
 

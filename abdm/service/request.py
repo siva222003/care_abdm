@@ -80,7 +80,7 @@ class Request:
         url = self.url + path
         headers = self.headers(headers, auth)
 
-        logger.info(f"headers-get1: {headers}")
+        logger.info(f"headers-get2: {headers}")
 
         response = requests.get(
             url, headers=headers, params=params, timeout=settings.ABDM_REQUEST_TIMEOUT

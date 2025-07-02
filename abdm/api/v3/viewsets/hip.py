@@ -103,6 +103,7 @@ class HIPCallbackViewSet(GenericViewSet):
 
     @action(detail=False, methods=["POST"], url_path="hip/token/on-generate-token")
     def hip__token__on_generate_token(self, request):
+        logger.info("hip__token__on_generate_token")
         validated_data = self.validate_request(request)
 
         hf_id = request.headers.get("X-HIP-ID")
@@ -143,6 +144,8 @@ class HIPCallbackViewSet(GenericViewSet):
 
                 cache.delete(request_cache_key)
 
+        logger.info("Link token generated")
+
         return Response(status=status.HTTP_202_ACCEPTED)
 
     @action(detail=False, methods=["POST"], url_path="link/on_carecontext")
@@ -152,6 +155,8 @@ class HIPCallbackViewSet(GenericViewSet):
         # TODO: delete care context transaction if it failed
 
         # TODO: handle failed link requests
+
+        logger.info("link__on_carecontext")
 
         return Response(status=status.HTTP_202_ACCEPTED)
 

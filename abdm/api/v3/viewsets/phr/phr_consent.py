@@ -7,6 +7,11 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from abdm.api.v3.serializers.phr.phr_consent import (
+    PhrConsentApprovalRequestSerializer,
+    PhrConsentDenySerializer,
+    PhrConsentRevokeSerializer,
+)
 from abdm.service.helper import (
     PHR_ACCESS_TOKEN_CACHE_TIMEOUT,
     PHR_ACCESS_TOKEN_PREFIX,
@@ -23,7 +28,11 @@ logger = getLogger(__name__)
 class PhrConsentViewSet(GenericViewSet):
     permission_classes = []
 
-    serializer_action_classes = {}
+    serializer_action_classes = {
+        "phr_consent__request__approve": PhrConsentApprovalRequestSerializer,
+        "phr_consent__request__deny": PhrConsentDenySerializer,
+        "phr_consent__request__revoke": PhrConsentRevokeSerializer,
+    }
 
     def get_serializer_class(self):
         if self.action in self.serializer_action_classes:
@@ -77,8 +86,8 @@ class PhrConsentViewSet(GenericViewSet):
             "access_token": str(refresh_token.access_token),
         }
 
-    @action(detail=False, methods=["get"], url_path="get_consent_requests")
-    def phr_consent_requests(self, request):
+    @action(detail=False, methods=["get"], url_path="requests")
+    def phr_consent__requests(self, request):
         x_token = self._get_x_token(request)
         status_query = request.query_params.get("status", "ALL")
         limit = request.query_params.get("limit", -1)
@@ -100,27 +109,24 @@ class PhrConsentViewSet(GenericViewSet):
             }
         )
 
-        return Response(
-            consent_requests,
-            status=status.HTTP_200_OK,
-        )
+        return Response(consent_requests, status=status.HTTP_202_ACCEPTED)
 
     @action(
         detail=False,
         methods=["get"],
-        url_path="get_consent_request/(?P<request_id>[^/.]+)",
+        url_path="request/(?P<request_id>[^/.]+)",
     )
-    def phr_consent_request(self, request, request_id):
+    def phr_consent__request(self, request, request_id):
         x_token = self._get_x_token(request)
 
         consent_request = PhrConsentService.phr__consent__request(
             {"x_token": x_token, "request_id": request_id}
         )
 
-        return Response(consent_request, status=status.HTTP_200_OK)
+        return Response(consent_request, status=status.HTTP_202_ACCEPTED)
 
-    @action(detail=False, methods=["get"], url_path="get_consent_artefacts")
-    def phr_consent_artefacts(self, request):
+    @action(detail=False, methods=["get"], url_path="artefacts")
+    def phr_consent__artefacts(self, request):
         x_token = self._get_x_token(request)
         status_query = request.query_params.get("status", "ALL")
         limit = request.query_params.get("limit", -1)
@@ -142,71 +148,126 @@ class PhrConsentViewSet(GenericViewSet):
             }
         )
 
-        return Response(consent_artefacts, status=status.HTTP_200_OK)
+        return Response(consent_artefacts, status=status.HTTP_202_ACCEPTED)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="request/(?P<request_id>[^/.]+)/artefacts",
+    )
+    def phr_consent__request__artefacts(self, request, request_id):
+        x_token = self._get_x_token(request)
+        consent_request_artefacts = PhrConsentService.phr__consent__request__artefacts(
+            {"x_token": x_token, "request_id": request_id}
+        )
+
+        return Response(consent_request_artefacts, status=status.HTTP_202_ACCEPTED)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="artefact/(?P<artefact_id>[^/.]+)",
+    )
+    def phr_consent__artefact(self, request, artefact_id):
+        x_token = self._get_x_token(request)
+        consent_artefact = PhrConsentService.phr__consent__artefact(
+            {"x_token": x_token, "artefact_id": artefact_id}
+        )
+
+        return Response(consent_artefact, status=status.HTTP_202_ACCEPTED)
 
     @action(
         detail=False,
         methods=["post"],
-        url_path="(?P<request_id>[^/.]+)/approve_consent_request",
+        url_path="request/(?P<request_id>[^/.]+)/approve",
     )
-    def approve_consent_request(self, request, request_id):
+    def phr_consent__request__approve(self, request, request_id):
+        validated_data = self.validate_request(request)
         x_token = self._get_x_token(request)
-        consents = request.data.get(
-            "consents",
-            [
-                {
-                    "hip": {"id": "IN3210000018"},
-                    "hiTypes": [
-                        "Prescription",
-                        "DiagnosticReport",
-                        "OPConsultation",
-                        "DischargeSummary",
-                        "ImmunizationRecord",
-                        "HealthDocumentRecord",
-                        "WellnessRecord",
+
+        result = PhrConsentService.phr__consent__request__approve(
+            {
+                "x_token": x_token,
+                "request_id": request_id,
+                "consents": validated_data.get("consents"),
+            }
+        )
+
+        return Response(
+            {"detail": result.get("message")},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="request/(?P<request_id>[^/.]+)/deny",
+    )
+    def phr_consent__request__deny(self, request, request_id):
+        validated_data = self.validate_request(request)
+        x_token = self._get_x_token(request)
+
+        PhrConsentService.phr__consent__request__deny(
+            {
+                "x_token": x_token,
+                "request_id": request_id,
+                "reason": validated_data.get("reason"),
+            }
+        )
+
+        return Response(
+            {"detail": "Consent request denied successfully"},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=False, methods=["post"], url_path="revoke")
+    def phr_consent__request__revoke(self, request):
+        validated_data = self.validate_request(request)
+        x_token = self._get_x_token(request)
+
+        result = PhrConsentService.phr__consent__request__revoke(
+            {
+                "x_token": x_token,
+                "consents": validated_data.get("consents"),
+            }
+        )
+
+        return Response(
+            {"detail": result.get("message")},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=False, methods=["post"], url_path="auto-approve")
+    def phr_consent__auto__approve(self, request):
+        # validated_data = self.validate_request(request)
+        x_token = self._get_x_token(request)
+
+        result = PhrConsentService.phr__consent__auto__approve(
+            {
+                "x_token": x_token,
+                "auto_approve_request": {
+                    "isApplicableForAllHIPs": True,
+                    "hiu": {"id": "IN3210000018"},
+                    "includedSources": [
+                        {
+                            "purpose": {
+                                "text": "Self Requested",
+                                "code": "PATRQT",
+                                "refUri": "www.abdm.gov.in",
+                            },
+                            "hip": None,
+                            "period": {
+                                "from": "2025-07-02T02:59:59.059Z",
+                                "to": "2125-06-08T02:59:29.059Z",
+                            },
+                        }
                     ],
-                    "careContexts": [],
-                    "permission": {
-                        "accessMode": "VIEW",
-                        "dateRange": {
-                            "from": "2025-06-01T02:34:12.000Z",
-                            "to": "2025-07-01T02:34:12.000Z",
-                        },
-                        "dataEraseAt": "2025-07-31T02:34:12.000Z",
-                        "frequency": {"unit": "HOUR", "value": 1, "repeats": 0},
-                    },
+                    "excludedSources": None,
                 },
-            ],
+            }
         )
 
-        consent_request = PhrConsentService.phr__consent__request__approve(
-            {"x_token": x_token, "request_id": request_id, "consents": consents}
+        return Response(
+            {"detail": result.get("message")},
+            status=status.HTTP_202_ACCEPTED,
         )
-
-        return Response(consent_request, status=status.HTTP_200_OK)
-
-    @action(
-        detail=False,
-        methods=["post"],
-        url_path="(?P<request_id>[^/.]+)/deny_consent_request",
-    )
-    def deny_consent_request(self, request, request_id):
-        x_token = self._get_x_token(request)
-        reason = request.data.get("reason")
-
-        consent_request = PhrConsentService.phr__consent__request__deny(
-            {"x_token": x_token, "request_id": request_id, "reason": reason}
-        )
-
-        return Response(consent_request, status=status.HTTP_200_OK)
-
-    @action(detail=False, methods=["post"], url_path="revoke_consent_request")
-    def revoke_consent_request(self, request):
-        x_token = self._get_x_token(request)
-        consents = request.data.get("consents")
-
-        consent_request = PhrConsentService.phr__consent__request__revoke(
-            {"x_token": x_token, "consents": consents}
-        )
-
-        return Response(consent_request, status=status.HTTP_200_OK)

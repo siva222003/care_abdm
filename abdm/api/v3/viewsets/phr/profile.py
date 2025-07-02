@@ -78,6 +78,7 @@ class PhrProfileViewSet(GenericViewSet):
 
         refresh_token = cache.get(refresh_key)
 
+        logger.info(f"refresh_token: {refresh_key}")
         result = PhrProfileService.phr__request__token({"r_token": refresh_token})
         tokens = result.get("tokens") or {}
 

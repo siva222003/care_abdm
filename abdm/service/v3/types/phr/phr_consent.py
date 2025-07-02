@@ -32,6 +32,24 @@ class PhrConsentArtefactsResponse(TypedDict):
     pass
 
 
+class PhrConsentRequestArtefactsBody(TypedDict):
+    x_token: str
+    request_id: str
+
+
+class PhrConsentRequestArtefactsResponse(TypedDict):
+    pass
+
+
+class PhrConsentArtefactBody(TypedDict):
+    x_token: str
+    artefact_id: str
+
+
+class PhrConsentArtefactResponse(TypedDict):
+    pass
+
+
 class PhrConsentRequestApproveBody(TypedDict):
     x_token: str
     request_id: str
@@ -60,3 +78,12 @@ class PhrConsentRequestRevokeBody(TypedDict):
 
 class PhrConsentRequestRevokeResponse(TypedDict):
     message: str
+
+
+class PhrConsentAutoApproveBody(TypedDict):
+    x_token: str
+    auto_approve_request: dict
+
+
+class PhrConsentAutoApproveResponse(TypedDict):
+    pass

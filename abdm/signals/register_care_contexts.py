@@ -39,7 +39,7 @@ def create_care_context_on_medication_request_creation(
             encounter=instance.encounter,
             created_date__date=instance.created_date.date(),
         ).count()
-        > 1
+        > 10
     ):
         return
 
