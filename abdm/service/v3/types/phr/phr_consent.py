@@ -68,7 +68,7 @@ class PhrConsentRequestDenyBody(TypedDict):
 
 
 class PhrConsentRequestDenyResponse(TypedDict):
-    pass
+    status: str
 
 
 class PhrConsentRequestRevokeBody(TypedDict):
@@ -80,10 +80,19 @@ class PhrConsentRequestRevokeResponse(TypedDict):
     message: str
 
 
-class PhrConsentAutoApproveBody(TypedDict):
+class PhrConsentAutoApproveSetupBody(TypedDict):
     x_token: str
-    auto_approve_request: dict
 
 
-class PhrConsentAutoApproveResponse(TypedDict):
+class PhrConsentAutoApproveSetupResponse(TypedDict):
     pass
+
+
+class PhrConsentAutoApproveUpdateBody(TypedDict):
+    x_token: str
+    auto_approve_request_id: str
+    enable: bool
+
+
+class PhrConsentAutoApproveUpdateResponse(TypedDict):
+    message: str

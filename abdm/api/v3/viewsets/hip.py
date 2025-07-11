@@ -165,6 +165,7 @@ class HIPCallbackViewSet(GenericViewSet):
     )
     def hip__patient__care_context__discover(self, request):
         validated_data = self.validate_request(request)
+        logger.info(f"hip__patient__care_context__discover: {validated_data}")
 
         patient_data = validated_data.get("patient", {})
         identifiers = [
@@ -175,6 +176,7 @@ class HIPCallbackViewSet(GenericViewSet):
         health_id_number = next(
             filter(lambda x: x.get("type") == "ABHA_NUMBER", identifiers), {}
         ).get("value")
+
         patient = Patient.objects.filter(
             Q(abha_number__abha_number=health_id_number)
             | Q(abha_number__health_id=patient_data.get("id"))
@@ -305,6 +307,8 @@ class HIPCallbackViewSet(GenericViewSet):
     def consent__request__hip__notify(self, request):
         validated_data = self.validate_request(request)
 
+        logger.info(f"validated_data_consent__request__hip__notify: {validated_data}")
+
         notification = validated_data.get("notification")
         consent_detail = notification.get("consentDetail")
         permission = consent_detail.get("permission")
@@ -352,6 +356,7 @@ class HIPCallbackViewSet(GenericViewSet):
 
     @action(detail=False, methods=["POST"], url_path="hip/health-information/request")
     def hip__health_information__request(self, request):
+        logger.info("hip__health_information__request")
         validated_data = self.validate_request(request)
 
         hi_request = validated_data.get("hiRequest")
@@ -401,6 +406,8 @@ class HIPCallbackViewSet(GenericViewSet):
                     "hip_id": request.headers.get("X-HIP-ID"),
                 }
             )
+
+            logger.info("Health information transferred successfully")
         except Exception as exception:
             logger.error(
                 f"Error occurred while transferring health information: {exception!s}"

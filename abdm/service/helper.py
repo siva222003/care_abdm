@@ -1,5 +1,5 @@
 from base64 import b64decode, b64encode
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from Crypto.Cipher import PKCS1_OAEP
@@ -8,6 +8,7 @@ from Crypto.PublicKey import RSA
 from django.core.cache import cache
 from django.db.models import Q
 from django.db.models.functions import TruncDate
+from django.utils import timezone
 from rest_framework.exceptions import APIException
 
 from abdm.models.abha_number import AbhaNumber
@@ -67,6 +68,7 @@ def encrypt_message(message: str, is_phr: bool = False):
 
     return b64encode(encrypted_message).decode()
 
+
 def hf_id_from_encounter(encounter: Encounter):
     if not encounter or not hasattr(encounter, "facility"):
         return None
@@ -77,6 +79,7 @@ def hf_id_from_encounter(encounter: Encounter):
         return None
 
     return facility.healthfacility.hf_id
+
 
 def hf_id_from_abha_id(health_id: str):
     abha_number = AbhaNumber.objects.filter(
@@ -306,3 +309,15 @@ def cache_phr_tokens(abha_health_id, access_token, refresh_token):
 def remove_cached_phr_tokens(abha_health_id):
     cache.delete(f"{PHR_ACCESS_TOKEN_PREFIX}{abha_health_id}")
     cache.delete(f"{PHR_REFRESH_TOKEN_PREFIX}{abha_health_id}")
+
+
+def format_abdm_datetime(dt):
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+
+def get_default_abdm_period(days=365):
+    now = timezone.now()
+    return {
+        "from": format_abdm_datetime(now + timedelta(seconds=10)),
+        "to": format_abdm_datetime(now + timedelta(days=days)),
+    }

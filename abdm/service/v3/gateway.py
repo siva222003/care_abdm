@@ -276,7 +276,8 @@ class GatewayService:
     def user_initiated_linking__patient__care_context__on_discover(
         data: UserInitiatedLinkingPatientCareContextOnDiscoverBody,
     ) -> UserInitiatedLinkingPatientCareContextOnDiscoverResponse:
-        hf_id = data.get("hf_id", None)
+        logger.info("user initiated linking patient care context on discover")
+        hf_id = "IN3210000018"
 
         if not hf_id:
             raise ABDMAPIException(
@@ -293,10 +294,13 @@ class GatewayService:
         patient = data.get("patient")
         if patient:
             hf_care_contexts = generate_care_contexts_for_existing_data(patient, hf_id)
+            logger.info(f"hf_care_contexts: {hf_care_contexts}")
 
             grouped_care_contexts = defaultdict(list)
             for care_context in hf_care_contexts[hf_id]:
                 grouped_care_contexts[care_context["hi_type"]].append(care_context)
+
+            logger.info(f"grouped_care_contexts: {grouped_care_contexts}")
 
             payload["patient"] = list(
                 map(
@@ -307,7 +311,7 @@ class GatewayService:
                             map(
                                 lambda x: {
                                     "referenceNumber": x["reference"],
-                                    "display": x["display"],
+                                    "display": "Medication Prescribed on 2025-05-21 10:50:45",
                                 },
                                 grouped_care_contexts[hi_type],
                             )
@@ -544,7 +548,7 @@ class GatewayService:
                 continue
 
             if (
-                model == "medication_request"
+                model == "prescription"
                 and HealthInformationType.PRESCRIPTION in consent.hi_types
             ):
                 medication_requests = MedicationRequest.objects.filter(
@@ -553,9 +557,11 @@ class GatewayService:
                 )
 
                 if not medication_requests.exists():
+                    logger.info("prescription_medication_requests_not_exists")
                     continue
 
                 fhir_data = Fhir().create_prescription_record(list(medication_requests))
+                logger.info(f"prescription_fhir_data: {fhir_data}")
 
             if (
                 model == "encounter"
@@ -636,6 +642,9 @@ class GatewayService:
             }
             entries.append(entry)
 
+        # logger.info(f"fhir_data: {fhir_data}")
+        # logger.info(f"care_context_consnet: {consent.get('consent_id')}")
+        logger.info(f"entries: {entries}")
         payload = {
             "pageNumber": 1,
             "pageCount": 1,
