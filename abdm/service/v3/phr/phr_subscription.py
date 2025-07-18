@@ -29,6 +29,9 @@ from abdm.settings import plugin_settings as settings
 logger = getLogger(__name__)
 
 
+ABDM_HIU_ID = "IN3210000018"
+
+
 class PhrSubscriptionService:
     request = Request(f"{settings.ABDM_GATEWAY_URL}/subscription-requests")
 
@@ -200,10 +203,8 @@ class PhrSubscriptionService:
             "PUT",
             f"/v3/patients/{data.get('subscription_id')}",
             payload={
-                "hiuId": data.get("hiu_id"),
-                "subscriptionEditAndApprovalRequest": data.get(
-                    "subscription_edit_request"
-                ),
+                "hiuId": ABDM_HIU_ID,
+                "subscriptionEditAndApprovalRequest": data.get("subscription"),
             },
             headers={
                 "X-AUTH-TOKEN": f"{data.get('x_token', '')}",

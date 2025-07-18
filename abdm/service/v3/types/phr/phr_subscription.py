@@ -63,8 +63,7 @@ class PhrSubscriptionStatusUpdateResponse(TypedDict):
 class PhrSubscriptionEditBody(TypedDict):
     x_token: str
     subscription_id: str
-    hiu_id: str
-    subscription_edit_request: dict
+    subscription: dict
 
 
 class PhrSubscriptionEditResponse(TypedDict):

@@ -15,6 +15,8 @@ from abdm.service.v3.types.phr.user_init_linking import (
     PhrUserInitLinkingCareContextDiscoverResponse,
     PhrUserInitLinkingCareContextInitBody,
     PhrUserInitLinkingCareContextInitResponse,
+    PhrUserInitLinkingCareContextLinksBody,
+    PhrUserInitLinkingCareContextLinksResponse,
 )
 from abdm.settings import plugin_settings as settings
 
@@ -84,6 +86,20 @@ class PhrUserInitLinkingService:
             )
 
         return response
+
+    @staticmethod
+    def phr__user_initiated_linking__care_context__links(
+        data: PhrUserInitLinkingCareContextLinksBody,
+    ) -> PhrUserInitLinkingCareContextLinksResponse:
+        response = PhrUserInitLinkingService._make_request(
+            "GET",
+            "/hip/v3/link/patient/links",
+            headers={
+                "X-AUTH-TOKEN": f"{data.get('x_token', '')}",
+            },
+            expected_status=200,
+        )
+        return response.json()
 
     @staticmethod
     def phr__user_initiated_linking__care_context__discover(

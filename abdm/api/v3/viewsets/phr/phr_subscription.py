@@ -9,33 +9,42 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from abdm.api.v3.serializers.phr.phr_subscription import (
-    PhrSubscriptionEditSerializer,
-    PhrSubscriptionRequestApproveSerializer,
+    PhrSubscriptionEditAndApproveSerializer,
     PhrSubscriptionRequestDenySerializer,
     PhrSubscriptionStatusUpdateSerializer,
 )
-from abdm.authentication import ABDMAuthentication
+from abdm.authentication import (
+    ABDMAuthentication,
+    IsPhrAuthenticated,
+    PhrCustomAuthentication,
+)
 from abdm.service.helper import (
     PHR_ACCESS_TOKEN_CACHE_TIMEOUT,
     PHR_ACCESS_TOKEN_PREFIX,
     PHR_REFRESH_TOKEN_CACHE_TIMEOUT,
     PHR_REFRESH_TOKEN_PREFIX,
+    transform_phr_links_data,
 )
 from abdm.service.v3.phr.phr_subscription import PhrSubscriptionService
 from abdm.service.v3.phr.profile import PhrProfileService
+from abdm.service.v3.phr.user_init_linking import PhrUserInitLinkingService
 
 logger = getLogger(__name__)
 
 
 @extend_schema(tags=["PHR Subscription"])
 class PhrSubscriptionViewSet(GenericViewSet):
-    permission_classes = []
+    permission_classes = [IsPhrAuthenticated]
+    authentication_classes = [PhrCustomAuthentication]
+
+    REQUIRED_REQUEST_FIELDS = ["purpose", "period", "categories", "hiu"]
+    VALID_STATUSES = ["ALL", "REQUESTED", "EXPIRED", "REVOKED", "GRANTED", "DENIED"]
 
     serializer_action_classes = {
-        "phr_subscription__request__approve": PhrSubscriptionRequestApproveSerializer,
+        "phr_subscription__request__approve": PhrSubscriptionEditAndApproveSerializer,
         "phr_subscription__request__deny": PhrSubscriptionRequestDenySerializer,
         "phr_subscription__status__update": PhrSubscriptionStatusUpdateSerializer,
-        "phr_subscription__edit": PhrSubscriptionEditSerializer,
+        "phr_subscription__edit": PhrSubscriptionEditAndApproveSerializer,
     }
 
     def get_serializer_class(self):
@@ -85,12 +94,42 @@ class PhrSubscriptionViewSet(GenericViewSet):
         except (ValueError, TypeError):
             return None, None, None
 
-        valid_statuses = ["ALL", "REQUESTED", "EXPIRED", "REVOKED", "GRANTED", "DENIED"]
-
-        if status_param not in valid_statuses:
+        if status_param not in self.VALID_STATUSES:
             return None, None, None
 
         return status_param, limit, offset
+
+    def _is_valid_item(self, item):
+        return all(item.get(field) for field in self.REQUIRED_REQUEST_FIELDS)
+
+    def _get_links_for_eligible_status(self, status_value, x_token):
+        if status_value in ["GRANTED", "REQUESTED"]:
+            links = PhrUserInitLinkingService.phr__user_initiated_linking__care_context__links(
+                {
+                    "x_token": x_token,
+                }
+            )
+            return transform_phr_links_data(links, include_links=False)
+
+        return []
+
+    def _transform_phr_subscription_request(self, subscription_request_data):
+        details = subscription_request_data.get("details", {})
+
+        return {
+            "subscriptionId": subscription_request_data.get("subscriptionId"),
+            "requestId": subscription_request_data.get("requestId"),
+            "createdAt": subscription_request_data.get("dateCreated"),
+            "lastUpdated": subscription_request_data.get("dateModified"),
+            "purpose": details.get("purpose"),
+            "patient": details.get("patient"),
+            "hiu": details.get("hiu"),
+            "hips": details.get("hips", []),
+            "categories": details.get("categories", []),
+            "period": details.get("period"),
+            "status": subscription_request_data.get("status"),
+            "requesterType": subscription_request_data.get("requesterType"),
+        }
 
     @action(detail=False, methods=["get"], url_path="requests")
     def phr_subscription__requests(self, request):
@@ -98,9 +137,7 @@ class PhrSubscriptionViewSet(GenericViewSet):
         status_param, limit, offset = self._get_query_params(request)
 
         if status_param is None:
-            return Response(
-                {"size": 0, "requests": []}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response([], status=status.HTTP_200_OK)
 
         subscription_requests = PhrSubscriptionService.phr__subscription__requests(
             {
@@ -111,7 +148,16 @@ class PhrSubscriptionViewSet(GenericViewSet):
             }
         )
 
-        return Response(subscription_requests, status=status.HTTP_200_OK)
+        filter_subscription_requests = [
+            request
+            for request in subscription_requests.get("requests", [])
+            if self._is_valid_item(request)
+        ]
+
+        return Response(
+            filter_subscription_requests,
+            status=status.HTTP_200_OK,
+        )
 
     @action(
         detail=False,
@@ -125,7 +171,30 @@ class PhrSubscriptionViewSet(GenericViewSet):
             {"x_token": x_token, "request_id": request_id}
         )
 
-        return Response(subscription_request, status=status.HTTP_200_OK)
+        transformed_subscription_request = self._transform_phr_subscription_request(
+            subscription_request
+        )
+
+        if transformed_subscription_request.get("hips", []):
+            return Response(
+                {
+                    "request": transformed_subscription_request,
+                    "links": transformed_subscription_request.get("hips", []),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        links = self._get_links_for_eligible_status(
+            subscription_request.get("status"), x_token
+        )
+
+        return Response(
+            {
+                "request": transformed_subscription_request,
+                "links": links,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(
         detail=False,
@@ -139,7 +208,32 @@ class PhrSubscriptionViewSet(GenericViewSet):
             {"x_token": x_token, "subscription_id": subscription_id}
         )
 
-        return Response(subscription_artefact, status=status.HTTP_200_OK)
+        hips = []
+        for source in subscription_artefact.get("includedSources", []):
+            hip_id = source.get("hip", {}).get("id")
+            if hip_id:
+                hips.append(source.get("hip"))
+
+        if hips:
+            return Response(
+                {
+                    "artefact": subscription_artefact,
+                    "links": hips,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        links = self._get_links_for_eligible_status(
+            subscription_artefact.get("status"), x_token
+        )
+
+        return Response(
+            {
+                "artefact": subscription_artefact,
+                "links": links,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(
         detail=False,
@@ -154,7 +248,7 @@ class PhrSubscriptionViewSet(GenericViewSet):
             {
                 "x_token": x_token,
                 "request_id": request_id,
-                "subscription": validated_data.get("subscription"),
+                "subscription": validated_data,
             }
         )
 
@@ -220,10 +314,7 @@ class PhrSubscriptionViewSet(GenericViewSet):
             {
                 "x_token": x_token,
                 "subscription_id": subscription_id,
-                "hiu_id": validated_data.get("hiu_id"),
-                "subscription_edit_request": validated_data.get(
-                    "subscription_edit_request"
-                ),
+                "subscription": validated_data,
             }
         )
 

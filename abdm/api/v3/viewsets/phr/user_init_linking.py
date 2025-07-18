@@ -22,6 +22,7 @@ from abdm.service.helper import (
     PHR_ACCESS_TOKEN_PREFIX,
     PHR_REFRESH_TOKEN_CACHE_TIMEOUT,
     PHR_REFRESH_TOKEN_PREFIX,
+    transform_phr_links_data,
 )
 from abdm.service.v3.phr.profile import PhrProfileService
 from abdm.service.v3.phr.user_init_linking import PhrUserInitLinkingService
@@ -79,6 +80,20 @@ class PhrUserInitLinkingViewSet(GenericViewSet):
         )
 
         return access_token
+
+    @action(detail=False, methods=["get"], url_path="links")
+    def phr_user_initiated_linking__care_context__links(self, request):
+        x_token = self._get_x_token(request)
+
+        links = (
+            PhrUserInitLinkingService.phr__user_initiated_linking__care_context__links(
+                {
+                    "x_token": x_token,
+                }
+            )
+        )
+
+        return Response(transform_phr_links_data(links), status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"], url_path="discover")
     def phr_user_initiated_linking__care_context__discover(self, request):

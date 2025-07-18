@@ -808,6 +808,13 @@ class GatewayService:
                     "refUri": "http://terminology.hl7.org/ValueSet/v3-PurposeOfUse",
                 },
                 "patient": {"id": consent.patient_abha.health_id},
+                # "hip": {"id": "IN2910000287"},
+                # "careContexts": [
+                #     {
+                #         "patientReference": "3284bcff-3df3-4f51-bd58-55212fae90ca",
+                #         "careContextReference": "v2::prescription::2025-07-13",
+                #     }
+                # ],
                 "hiu": {"id": hiu_id},
                 "requester": {
                     "name": f"{consent.requester.first_name} {consent.requester.last_name}",

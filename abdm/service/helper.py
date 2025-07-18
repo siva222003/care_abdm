@@ -321,3 +321,42 @@ def get_default_abdm_period(days=365):
         "from": format_abdm_datetime(now + timedelta(seconds=10)),
         "to": format_abdm_datetime(now + timedelta(days=days)),
     }
+
+
+def transform_phr_links_data(links_data, include_links=True):
+    patient = links_data.get("patient", {})
+    links = patient.get("links", [])
+
+    hip_groups = {}
+
+    for link in links:
+        hip = link.get("hip", {})
+        hip_id = hip.get("id")
+
+        if not hip_id:
+            continue
+
+        if hip_id not in hip_groups:
+            hip_groups[hip_id] = {"hip": hip, "links": []}
+
+        if include_links:
+            care_contexts = link.get("careContexts", [])
+            for care_context in care_contexts:
+                link_object = {
+                    "patientReference": link.get("referenceNumber"),
+                    "careContextReference": care_context.get("referenceNumber"),
+                    "display": care_context.get("display"),
+                }
+                hip_groups[hip_id]["links"].append(link_object)
+
+    if include_links:
+        transformed_data = [
+            {"hip": group_data["hip"], "careContexts": group_data["links"]}
+            for group_data in hip_groups.values()
+        ]
+    else:
+        transformed_data = [
+            {"hip": group_data["hip"]} for group_data in hip_groups.values()
+        ]
+
+    return transformed_data
