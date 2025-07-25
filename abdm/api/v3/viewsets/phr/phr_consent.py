@@ -291,30 +291,21 @@ class PhrConsentViewSet(GenericViewSet):
         url_path="request/(?P<request_id>[^/.]+)/deny",
     )
     def phr_consent__request__deny(self, request, request_id):
-        try:
-            validated_data = self.validate_request(request)
-            x_token = self._get_x_token(request)
+        validated_data = self.validate_request(request)
+        x_token = self._get_x_token(request)
 
-            logger.info(f"Request camee: {request.data}")
+        result = PhrConsentService.phr__consent__request__deny(
+            {
+                "x_token": x_token,
+                "request_id": request_id,
+                "reason": validated_data.get("reason"),
+            }
+        )
 
-            result = PhrConsentService.phr__consent__request__deny(
-                {
-                    "x_token": x_token,
-                    "request_id": request_id,
-                    "reason": validated_data.get("reason"),
-                }
-            )
-
-            return Response(
-                {"detail": result.get("status")},
-                status=status.HTTP_200_OK,
-            )
-        except Exception as e:
-            logger.error(f"Error in phr_consent__request__deny: {e}")
-            return Response(
-                {"detail": "An error occurred while denying the consent request"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        return Response(
+            {"detail": result.get("status")},
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["post"], url_path="revoke")
     def phr_consent__request__revoke(self, request):

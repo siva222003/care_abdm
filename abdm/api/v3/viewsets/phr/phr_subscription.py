@@ -212,7 +212,7 @@ class PhrSubscriptionViewSet(GenericViewSet):
         for source in subscription_artefact.get("includedSources", []):
             hip_id = source.get("hip", {}).get("id")
             if hip_id:
-                hips.append(source.get("hip"))
+                hips.append({"hip": source.get("hip")})
 
         if hips:
             return Response(
